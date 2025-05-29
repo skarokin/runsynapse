@@ -1,0 +1,1 @@
+export { default as SettingsGithub } from './settings-github.svelte';
