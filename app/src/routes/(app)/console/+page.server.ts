@@ -55,6 +55,12 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
         });
     } catch (error: any) {
         console.error('Error fetching GCP projects:', error);
+        // check if due to invalid_grant
+        if (error.code === 400 && error.message.includes('invalid_grant')) {
+            return {
+                error: "Invalid Google credentials. Please re-authenticate."
+            }
+        }
 
         return {
             error: 'Failed to fetch GCP projects'

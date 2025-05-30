@@ -119,6 +119,44 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
             }
         }
         // TODO: trigger Cloud Run build for this branch
+		// note that there is a "base_ref" field that indiciates main branch
+		// so, we can simply check if the incoming ref is main or not; no need to store the main branch in database
+
+	case "create":
+		log.Println("Branch or tag creation event received")
+		if payloadMap, ok := payload.(map[string]any); ok {
+			if ref, ok := payloadMap["ref"].(string); ok {
+				log.Printf("Ref created: %s", ref)
+			}
+			if refType, ok := payloadMap["ref_type"].(string); ok {
+				log.Printf("Ref type: %s", refType)
+			}
+			if repo, ok := payloadMap["repository"].(map[string]any); ok {
+				if fullName, ok := repo["full_name"].(string); ok {
+					log.Printf("Repository: %s", fullName)
+				}
+			}
+		}
+		// TODO: handle branch or tag creation
+		// note that GitHub also sends a 'push' event for branch creation, but it's not guaranteed that the 'create' event is first
+		// so, the 'push' handler should actually handle the branch creation. 'create' is then just for logging purposes
+
+	case "delete":
+		log.Println("Branch or tag deletion event received")
+		if payloadMap, ok := payload.(map[string]any); ok {
+			if ref, ok := payloadMap["ref"].(string); ok {
+				log.Printf("Ref deleted: %s", ref)
+			}
+			if refType, ok := payloadMap["ref_type"].(string); ok {
+				log.Printf("Ref type: %s", refType)
+			}
+			if repo, ok := payloadMap["repository"].(map[string]any); ok {
+				if fullName, ok := repo["full_name"].(string); ok {
+					log.Printf("Repository: %s", fullName)
+				}
+			}
+		}
+		// TODO: handle branch or tag deletion
 
     case "installation":
         log.Println("Installation event")

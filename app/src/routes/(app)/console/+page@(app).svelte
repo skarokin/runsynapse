@@ -4,7 +4,7 @@
     import { Badge } from "$lib/components/ui/badge/index.js";
 
     let { data } = $props();
-    const { projects } = $derived(data);
+    const { error, projects } = $derived(data);
 </script>
 
 <div class="space-y-6 w-full">
@@ -14,6 +14,12 @@
             Orchestrate your projects, deployments, and integrations.
         </p>
     </div>
+    {#if error}
+        <div>
+            <h3 class="font-medium">Oops!</h3>
+            <p class="text-sm text-muted-foreground">There was a problem loading your projects:                                         {error}</p>
+        </div>
+    {/if}
     <div class="space-y-4">
         {#each projects || [] as project}
             <Card.Root>
