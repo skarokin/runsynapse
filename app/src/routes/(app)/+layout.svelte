@@ -4,35 +4,26 @@
     import { Toaster } from "$lib/components/ui/sonner/index.js";
 
     import { page } from "$app/state";
-    import { onMount } from "svelte";
 
     import "../../app.css";
 
     let { data, children } = $props();
-    const { userMetadata } = $derived(data);
+    const { userMetadata } = data;
 
     const activeTab = $derived(
-        page.url.pathname === "/overview"
-            ? "overview"
-            : page.url.pathname === "/deployments"
-              ? "deployments"
-              : page.url.pathname === "/settings"
-                ? "settings"
-                : "overview"
+        page.url.pathname === "/console"
+            ? "console"
+            : page.url.pathname === "/settings"
+            ? "settings"
+            : "console"
     );
 
     const tabs = [
         { id: "console", label: "Console", href: "/console" },
         { id: "settings", label: "Settings", href: "/settings" },
     ];
-
-    let mounted = $state(false);
-    onMount(() => {
-        mounted = true;
-    });
 </script>
 
-{#if mounted}
 <Toaster />
 
 <div class="h-screen w-full flex flex-col font-sans">
@@ -69,4 +60,3 @@
         </main>
     </div>
 </div>
-{/if}

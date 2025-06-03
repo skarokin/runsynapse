@@ -5,7 +5,7 @@
 	let {children } = $props()
 </script>
 
-<div class="h-screen w-full flex flex-col font-sans">
+<div class=" h-screen w-full flex flex-col font-sans">
     <div class="w-full mt-8">
         <header class="px-4 sm:px-0 container mx-auto flex items-center justify-center">
 			<a class="flex items-center gap-4" href="/">

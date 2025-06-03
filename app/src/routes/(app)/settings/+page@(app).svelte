@@ -16,7 +16,7 @@
     import { page } from "$app/state";
     
     let { data } = $props();
-    const { userMetadata, connectedRepos, isConnected, installationID } = $derived(data);
+    const { userMetadata, connectedRepos, isConnected, installationID } = data;
     
     let autoDeployEnabled = $state(data.autoDeploy ?? false);
     let onlyMainEnabled = $state(data.onlyMain ?? false);

@@ -1,10 +1,10 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession } }) => {
-    const session = await safeGetSession();
-
-    if (!session?.user) {
+export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
+    const userID = user?.id;
+    if (!userID) {
+        console.error('User ID not found in session');
         throw redirect(302, '/auth/login');
     }
 
@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
                 created_at
             )
         `)
-        .eq('user_id', session.user.id);
+        .eq('user_id', userID);
     if (error) {
         console.error('Error fetching GitHub installations:', error);
         throw redirect(302, '/settings?github=error&reason=db_error');

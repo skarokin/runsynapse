@@ -69,7 +69,7 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	event.locals.session = session
 	event.locals.user = user
 
-	const protectedRoutes = ['/overview', '/settings', '/deployments']
+	const protectedRoutes = ['/overview', '/settings']
     const isProtectedRoute = protectedRoutes.some(route => 
         event.url.pathname.startsWith(route)
     )
