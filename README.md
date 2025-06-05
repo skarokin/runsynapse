@@ -13,9 +13,9 @@ Tasks:
 - [x] Connect GCP account and list projects
 - [x] Encrypt refresh token at rest (already handled by Supabase I just learned :D)
 - [x] Listen for push events from GitHub
+- [x] Dockerfile path configuration
+- [x] Link repository to GCP project
 - [ ] Figure out a good UI and user flow for adding repos, connecting to projects, viewing deployments etc! Currently horrible omg
-- [ ] Dockerfile path configuration
-- [ ] Link repository to GCP project
 - [ ] Provision GCP resources for the user
 - [ ] Set up build pipeline (either Cloud Build or clone + Dockerize + push from my VM)
 - [ ] CI/CD after pushes
