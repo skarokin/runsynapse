@@ -7,7 +7,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
         provider: 'google',
         options: {
             redirectTo: `${url.origin}/auth/callback`,
-            scopes: 'openid email profile https://www.googleapis.com/auth/cloudplatformprojects',
+            scopes: 'openid email profile https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/logging.read https://www.googleapis.com/auth/monitoring.read',
             queryParams: {
                 access_type: 'offline', // required for refresh token
                 prompt: 'consent',      // forces consent screen to get refresh token

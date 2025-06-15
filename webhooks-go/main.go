@@ -21,6 +21,7 @@ type WebhookHandler struct {
 	webhookSecret string
 }
 
+// smee --url [SMEE_URL] --path /webhook --port 8080
 func main() {
 	err := godotenv.Load()
 	if err != nil {
