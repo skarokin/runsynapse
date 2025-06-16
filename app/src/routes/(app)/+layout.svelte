@@ -32,7 +32,7 @@
             class="px-4 py-2 h-full mx-auto flex items-center justify-between"
         >
             <div class="flex gap-8 items-center">
-                <a href="/overview">
+                <a href="/console">
                     <Logo width={20} height={20} />
                 </a>
                 {#each tabs as tab}

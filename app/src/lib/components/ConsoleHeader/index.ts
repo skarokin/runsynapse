@@ -1,0 +1,1 @@
+export { default as ConsoleHeader } from './console-header.svelte';
