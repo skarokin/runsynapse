@@ -1,0 +1,1 @@
+export { default as ContentArea } from './content-area.svelte';
