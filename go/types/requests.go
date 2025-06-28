@@ -20,7 +20,7 @@ type ToggleOrGotoPinRequest struct {
 
 type DeleteThoughtRequest struct {
 	UserID   UserID `json:"user_id"`
-	ThoughtID string `json:"thought_id"`
+	ThoughtID ThoughtID `json:"thought_id"`
 }
 
 type SearchThoughtsRequest struct {

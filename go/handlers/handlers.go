@@ -10,23 +10,32 @@ import (
 type Handler struct {
 	supabaseClient *pgxpool.Pool
 	geminiClient   *genai.Client
+	mux            *http.ServeMux
 }
 
 func NewHandler(supabase *pgxpool.Pool, gemini *genai.Client) *Handler {
-	return &Handler{
+	h := &Handler{
 		supabaseClient: supabase,
 		geminiClient:   gemini,
+		mux:            http.NewServeMux(),
 	}
+	h.setupRoutes()
+	return h
 }
 
-func (h *Handler) SetupRoutes() {
-	http.HandleFunc("/loadFunction", h.loadFunction)
-	http.HandleFunc("/loadThoughts", h.loadThoughts)
-	http.HandleFunc("/pinThought", h.pinThought)
-	http.HandleFunc("/unpinThought", h.unpinThought)
-	http.HandleFunc("/searchThoughts", h.searchThoughts)
-	http.HandleFunc("/gotoPin", h.gotoPin)
-	http.HandleFunc("/deleteThought", h.deleteThought)
-	http.HandleFunc("/newThought", h.newThought)
-	http.HandleFunc("/health", h.healthCheck)
+// registers all routes (private method)
+func (h *Handler) setupRoutes() {
+	h.mux.HandleFunc("/loadFunction", h.loadFunction)
+	h.mux.HandleFunc("/loadThoughts", h.loadThoughts)
+	h.mux.HandleFunc("/pinThought", h.pinThought)
+	h.mux.HandleFunc("/unpinThought", h.unpinThought)
+	h.mux.HandleFunc("/searchThoughts", h.searchThoughts)
+	h.mux.HandleFunc("/gotoPin", h.gotoPin)
+	h.mux.HandleFunc("/deleteThought", h.deleteThought)
+	h.mux.HandleFunc("/newThought", h.newThought)
+	h.mux.HandleFunc("/health", h.healthCheck)
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.mux.ServeHTTP(w, r)
 }

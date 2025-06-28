@@ -9,24 +9,39 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
         });
     }
 
-    const formData = await request.formData();
-    
-    formData.append('user_id', user.id);
+    const { thought_id } = await request.json();
 
     try {
-        const res = await fetch(`${GO_API_ENDPOINT}/newThought`, {
+        const res = await fetch(`${GO_API_ENDPOINT}/deleteThought`, {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'X-API-Key': GO_API_KEY
             },
-            body: formData
+            body: JSON.stringify({
+                user_id: user.id,
+                thought_id: thought_id
+            })
         });
 
+        console.log('Response from Go backend:', res);
+
         const result = await res.json();
+
+        if (!result.success) {
+            console.error('Failed to delete thought:', result);
+            return new Response(JSON.stringify({ error: 'Failed to delete thought' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        console.log('Thought deleted successfully:', result);
         
-        return new Response(JSON.stringify(result), {
+        return new Response(JSON.stringify(result.success), {
             headers: { 'Content-Type': 'application/json' }
         });
+
     } catch (error) {
         console.error('Error calling Go backend:', error);
         return new Response(JSON.stringify({ error: 'Failed to create thought' }), {

@@ -34,6 +34,8 @@ func (h *Handler) newThought(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+	log.Println("[NEW_THOUGHT] New thought request received for user:", userIDstr)
+
 	userID, err := uuid.Parse(userIDstr)
 	if err != nil {
 		log.Printf("Invalid user_id: %v", err)
@@ -150,12 +152,87 @@ func (h *Handler) newThought(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteThought(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
+	if r.Method != http.MethodPost {
+		log.Println("Method not allowed for deleteThought")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// 1. parse request json
+	var request types.DeleteThoughtRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		log.Printf("Error decoding request: %v", err)
+		http.Error(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	userIDStr := request.UserID
+	thoughtIDStr := request.ThoughtID
+
+	if thoughtIDStr == "" {
+		log.Println("thought_id is required")
+		http.Error(w, "thought_id is required", http.StatusBadRequest)
+		return
+	}
+
+	if userIDStr == "" {
+		log.Println("user_id is required")
+		http.Error(w, "user_id is required", http.StatusBadRequest)
+		return
+	}
+
+	log.Println("[DELETE_THOUGHT] Delete thought request received for user:", userIDStr)
+
+	userID, err := uuid.Parse(string(userIDStr))
+	if err != nil {
+		log.Printf("Invalid user_id: %v", err)
+		http.Error(w, "Invalid user_id", http.StatusBadRequest)
+		return
+	}
+
+	thoughtID, err := uuid.Parse(string(thoughtIDStr))
+	if err != nil {
+		log.Printf("Invalid thought_id: %v", err)
+		http.Error(w, "Invalid thought_id", http.StatusBadRequest)
+		return
+	}
+
 	// 2. delete the thought and associated data from the database
-	// 3. delete the file from S3 if it exists
+	var res string
+	err = h.supabaseClient.QueryRow(context.Background(), `
+		SELECT * FROM delete_thought($1, $2)
+	`, userID, thoughtID).Scan(&res)
+	if err != nil {
+		log.Printf("Error deleting thought: %v", err)
+		http.Error(w, "Failed to delete thought", http.StatusInternalServerError)
+		return
+	}
+
+	// parse result into a struct
+	var dbResult struct {
+		Deleted bool `json:"deleted"`
+		AttachmentURLs []string `json:"attachment_urls"`
+		ThoughtID string `json:"thought_id"`
+	}
+
+	err = json.Unmarshal([]byte(res), &dbResult)
+	if err != nil {
+		log.Printf("Error parsing database result: %v", err)
+		http.Error(w, "Failed to parse result", http.StatusInternalServerError)
+		return
+	}
+	
+	// 3. TODO - delete the files from S3 if they exist (database call will return attachment URLs)
+
+	// for now, just log attachment URLs and return success
+	response := types.DeleteThoughtResponse{
+		Success: dbResult.Deleted,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
+

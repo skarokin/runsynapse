@@ -28,6 +28,8 @@
     let aiSummary = $state<string>('');
     let retrievedThoughts = $state<Array<{id: number, content: string, timestamp: string, pinned: boolean}>>([]);
 
+    let contentScrollAreaRef = $state<HTMLElement | null>(null);
+
     async function sendThought() {
         if (!newThought.trim()) return;
         
@@ -79,8 +81,20 @@
                 }
 
                 thoughts.push(result.thought);
+
+                // scroll to the bottom of the content area
+                setTimeout(() => {
+                    console.log('scrollAreaRef:', contentScrollAreaRef);
+                    if (contentScrollAreaRef) {
+                        const viewport = contentScrollAreaRef.querySelector('[data-slot="scroll-area-viewport"]');
+                        console.log('Found viewport:', viewport);
+                        if (viewport) {
+                            viewport.scrollTop = viewport.scrollHeight;
+                        }
+                    }
+                }, 100);
             }
-            
+
             newThought = '';
             pendingFiles = [];
         } catch (error) {
@@ -151,7 +165,6 @@
         });
     }
 
-
     function handleSearchKeydown(event: KeyboardEvent) {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -165,8 +178,6 @@
             sendThought();
         }
     }
-
-    let contentScrollAreaRef = $state<HTMLElement | null>(null);
 </script>
 
 <svelte:window onkeydown={(e) => {
@@ -216,7 +227,7 @@
         retrievedThoughts={retrievedThoughts}
         thoughts={thoughts}
         isLoading={isLoading}
-        scrollAreaRef={contentScrollAreaRef}
+        bind:scrollAreaRef={contentScrollAreaRef}
     />
 
     <!-- input -->

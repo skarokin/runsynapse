@@ -2,8 +2,12 @@
     import { ScrollArea } from '$lib/components/ui/scroll-area';
     import { Badge } from '$lib/components/ui/badge';
     import { Button } from '$lib/components/ui/button';
+    import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
     import Brain from "@lucide/svelte/icons/brain";
+    import Trash from "@lucide/svelte/icons/trash";
     import Pin from "@lucide/svelte/icons/pin";
+    import MoreHorizontal from "@lucide/svelte/icons/more-horizontal";
+    import { toast } from 'svelte-sonner';
 
     import { prettyPrintDate } from '$lib/utils/date';
 
@@ -16,16 +20,46 @@
         scrollAreaRef = $bindable(),
     } = $props();
 
-    function togglePin(thoughtId: string) {
-        const thought = thoughts.find((t: any) => t.id === thoughtId);
+    function togglePin(thoughtID: string) {
+        const thought = thoughts.find((t: any) => t.id === thoughtID);
         if (thought) {
             thought.pinned = !thought.pinned;
         }
     }
+
+    async function deleteThought(thoughtID: string) {
+        const thought = thoughts.find((t: any) => t.id === thoughtID);
+        if (!thought) {
+            return;
+        }
+
+        const res = await fetch('/synapse/api/deleteThought', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                thought_id: thoughtID,
+            }),
+        });
+
+        if (!res.ok) {
+            toast.error('Failed to delete thought');
+            return;
+        }
+
+        const result = await res.json();
+        if (result.error) {
+            toast.error('Failed to delete thought', result.error);
+            return;
+        }
+
+        thoughts = thoughts.filter((t: any) => t.id !== thoughtID);
+    }
 </script>
 
 <ScrollArea
-    bind:this={scrollAreaRef}
+    bind:ref={scrollAreaRef}
     class="min-h-0 flex-1"
 >
     {#if aiMode}
@@ -116,14 +150,30 @@
                                     Pinned
                                 </Badge>
                             {/if}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                class="opacity-0 group-hover:opacity-100 h-5 w-5 p-0 ml-auto"
-                                onclick={() => togglePin(thought.id)}
-                            >
-                                <Pin class="w-3 h-3" />
-                            </Button>
+                            <DropdownMenu.Root>
+                                <DropdownMenu.Trigger>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        class="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                                    >
+                                        <MoreHorizontal class="w-3.5 h-3.5" />
+                                    </Button>
+                                </DropdownMenu.Trigger>
+                                <DropdownMenu.Content align="end">
+                                    <DropdownMenu.Item onclick={() => togglePin(thought.id)}>
+                                        <Pin class="w-3.5 h-3.5 mr-2" />
+                                        {thought.pinned ? 'Unpin' : 'Pin'}
+                                    </DropdownMenu.Item>
+                                    <DropdownMenu.Item 
+                                        onclick={() => deleteThought(thought.id)}
+                                        class="text-red-600 focus:text-red-600"
+                                    >
+                                        <Trash class="w-3.5 h-3.5 mr-2" />
+                                        Delete
+                                    </DropdownMenu.Item>
+                                </DropdownMenu.Content>
+                            </DropdownMenu.Root>
                         </div>
                         <p class="text-sm leading-relaxed whitespace-pre-wrap">
                             {thought.thought}

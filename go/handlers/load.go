@@ -13,6 +13,10 @@ import (
 
 // exact same as loadThoughts but returns the pinned thoughts too
 func (h* Handler) loadFunction(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	var request types.RequestsOnlyRequiringUserID
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -21,13 +25,14 @@ func (h* Handler) loadFunction(w http.ResponseWriter, r *http.Request) {
 
 	// extract user ID (it's of type UserID, already validated)
 	userIDStr := request.UserID
-
 	userID, err := uuid.Parse(string(userIDStr))
 	if err != nil {
 		log.Printf("Invalid user_id: %v", err)
 		http.Error(w, "Invalid user_id", http.StatusBadRequest)
 		return
 	}
+
+	log.Println("[LOAD] Load function called for user:", userIDStr)
 
 	// get db result
 	var res string
@@ -103,9 +108,9 @@ func (h *Handler) loadThoughts(w http.ResponseWriter, r *http.Request) {
 	userID := request.UserID
 	limit := request.Limit
 	cursor := request.Cursor
-	order := request.Order 
+	order := request.Order
 
-	log.Println("Loading thoughts for user:", userID, "with limit:", limit, "and cursor:", cursor, "order:", order)
+	log.Println("[LOAD] Loading thoughts for user:", userID, "with limit:", limit, "and cursor:", cursor, "order:", order)
 
 	// infinite scrolling logic:
 	//    - if no cursor, load the latest [limit] thoughts

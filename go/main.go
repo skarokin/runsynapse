@@ -3,7 +3,13 @@ package main
 import (
 	"log"
 	"net/http"
+	"net/http/httptest"
+	"strings"
+	"context"
 	"os"
+
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-lambda-go/events"
 
 	"github.com/skarokin/runsynapse/go/inits"
 	"github.com/skarokin/runsynapse/go/handlers"
@@ -28,17 +34,74 @@ func main() {
 
 	handler := handlers.NewHandler(supabaseClient, geminiClient)
 
-	handler.SetupRoutes()
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
+	if os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "" {
+		log.Println("Running in AWS Lambda environment")
+		lambda.Start(createLambdaHandler(handler))
+	} else {
+		log.Println("Starting HTTP server (development mode)")
+		startHTTPServer(handler, port)
+	}
+}
+
+func startHTTPServer(handler *handlers.Handler, port string) {
     log.Printf("Server running on port %s", port)
     log.Printf("Health check: http://localhost:%s/health", port)
 
-    if err := http.ListenAndServe(":"+port, nil); err != nil {
+	// handlers.NewHandler sets up the routes, no need to do it again here
+    if err := http.ListenAndServe(":"+port, handler); err != nil {
         log.Fatalf("Failed to start server: %v", err)
+    }
+}
+
+func createLambdaHandler(handler *handlers.Handler) func(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+    return func(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+        // create path with query string
+        path := request.Path
+        if request.QueryStringParameters != nil && len(request.QueryStringParameters) > 0 {
+            path += "?"
+            for k, v := range request.QueryStringParameters {
+                path += k + "=" + v + "&"
+            }
+            path = path[:len(path)-1] // remove trailing &
+        }
+
+        // initialize a new HTTP request from API Gateway event
+        req, err := http.NewRequest(request.HTTPMethod, path, strings.NewReader(request.Body))
+        if err != nil {
+            return events.APIGatewayProxyResponse{
+                StatusCode: http.StatusInternalServerError,
+                Body:       "Error creating request: " + err.Error(),
+            }, nil
+        }
+
+        // set headers from API Gateway event
+        for k, v := range request.Headers {
+            req.Header.Add(k, v)
+        }
+
+        // create response recorder (captures response from the handler)
+        w := httptest.NewRecorder()
+
+        // pass in the response recorder and request to the HTTP handler
+        handler.ServeHTTP(w, req)
+        
+        // convert response from recorder to API Gateway response format
+        res := events.APIGatewayProxyResponse{
+            StatusCode: w.Code,
+            Headers:    make(map[string]string),
+            Body:       w.Body.String(),
+        }
+        
+        // copy headers
+        for k, v := range w.Header() {
+            res.Headers[k] = v[0]
+        }
+        
+        return res, nil
     }
 }
