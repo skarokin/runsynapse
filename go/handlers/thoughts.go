@@ -90,7 +90,7 @@ func (h *Handler) newThought(w http.ResponseWriter, r *http.Request) {
 
 	// generate embeddings
 	// FUTURE - this should be background; consistently takes 800-1000ms
-	embedding, err := utils.GetEmbedding(context.Background(), h.geminiClient, thoughtText)
+	embedding, err := utils.GetThoughtEmbedding(context.Background(), h.geminiClient, thoughtText)
 	if err != nil {
 		log.Printf("Error generating embedding: %v", err)
 		http.Error(w, "Failed to generate embedding", http.StatusInternalServerError)

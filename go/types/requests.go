@@ -8,9 +8,7 @@ type RequestsOnlyRequiringUserID struct {
 
 type LoadThoughtsRequest struct {
 	UserID UserID `json:"user_id"`
-	Limit  int    `json:"limit"` 
-	Cursor string `json:"cursor"`
-	Order Order `json:"order"` // "before" or "after"
+	Cursor ThoughtID `json:"cursor"`
 }
 
 type ToggleOrGotoPinRequest struct {

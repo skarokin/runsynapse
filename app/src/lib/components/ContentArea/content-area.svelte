@@ -18,13 +18,58 @@
         isLoading,
         thoughts,
         scrollAreaRef = $bindable(),
+        hasMoreAbove = $bindable(false),
     } = $props();
+
+    let isLoadingMore = $state(false);  // universal for above or below loading
+    let topSentinel = $state<HTMLElement | null>(null);    // tiny element for intersection observer to detect
+    let observer: IntersectionObserver | null = null;
 
     function togglePin(thoughtID: string) {
         const thought = thoughts.find((t: any) => t.id === thoughtID);
         if (thought) {
             thought.pinned = !thought.pinned;
         }
+    }
+
+    async function loadMoreThoughts() {
+        if (isLoadingMore || aiMode) {
+            return;
+        }
+
+        isLoadingMore = true;
+
+        try {
+            const res = await fetch('/synapse/api/loadMoreThoughts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    lastThoughtID: thoughts.length > 0 ? thoughts[0].id : null,
+                }),
+            });
+
+            if (!res.ok) {
+                toast.error('Failed to load more thoughts');
+                return;
+            }
+
+            const result = await res.json();
+            if (result.error) {
+                toast.error('Failed to load more thoughts', result.error);
+                return;
+            }
+
+            thoughts = [...result.thoughts, ...thoughts];
+            hasMoreAbove = result.hasMoreAbove || false;
+        } catch (error) {
+            console.error('Error loading more thoughts:', error);
+            toast.error('An error occurred while loading more thoughts');
+        } finally {
+            isLoadingMore = false;
+        }
+
     }
 
     async function deleteThought(thoughtID: string) {
@@ -56,6 +101,27 @@
 
         thoughts = thoughts.filter((t: any) => t.id !== thoughtID);
     }
+
+    $effect(() => {
+        if (topSentinel && scrollAreaRef && hasMoreAbove && !aiMode) {
+            observer = new IntersectionObserver(
+                (entries) => {
+                    if (entries[0].isIntersecting && hasMoreAbove && !isLoadingMore) {
+                        loadMoreThoughts();
+                    }
+                },
+                {
+                    root: scrollAreaRef,
+                    rootMargin: '0px',
+                    threshold: 0.1
+                }
+            );
+            observer.observe(topSentinel);
+        }
+        return () => {
+            observer?.disconnect();
+        };
+    });
 </script>
 
 <ScrollArea
@@ -69,9 +135,7 @@
                 <div class="bg-muted/50 rounded-lg p-4">
                     <div class="flex items-center gap-2 mb-3">
                         <Brain class="w-4 h-4 text-primary" />
-                        <span class="text-sm font-medium text-primary"
-                            >AI Response</span
-                        >
+                        <span class="text-sm font-medium text-primary">AI Response</span>
                     </div>
                     <p class="text-sm leading-relaxed whitespace-pre-wrap">
                         {aiSummary}
@@ -132,6 +196,13 @@
         </div>
     {:else}
         <!-- thoughts area -->
+        <!-- tiny div for intersection observer to detect scroll -->
+        <div bind:this={topSentinel} class="h-1"></div>
+        {#if isLoadingMore}
+            <div class="text-center py-2 text-muted-foreground text-xs">
+                Loading more thoughts...
+            </div>
+        {/if}
         <div class="space-y-1">
             {#each thoughts as thought}
                 <div

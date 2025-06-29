@@ -24,8 +24,6 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
             })
         });
 
-        console.log('Response from Go backend:', res);
-
         const result = await res.json();
 
         if (!result.success) {
@@ -35,8 +33,6 @@ export const POST: RequestHandler = async ({ request, locals: { user } }) => {
                 headers: { 'Content-Type': 'application/json' }
             });
         }
-
-        console.log('Thought deleted successfully:', result);
         
         return new Response(JSON.stringify(result.success), {
             headers: { 'Content-Type': 'application/json' }

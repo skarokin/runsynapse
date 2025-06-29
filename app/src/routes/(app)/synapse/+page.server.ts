@@ -39,12 +39,11 @@ export const load: PageServerLoad = async ({ locals: { user } }) => {
         console.error('Invalid response format:', data);
         return { error: 'Invalid response format' };
     }
-
+    
     return {
         thoughts: data.thoughts,
+        hasMoreAbove: data.more_above || false,
         thoughtSet: new Set<string>(data.thoughts.map((thought: Thought) => thought.id)),
         pinnedThoughts: data.pinned_thoughts || [],
-        moreAbove: data.more_above || false,
-        moreBelow: data.more_below || false,
     }
 };

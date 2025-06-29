@@ -15,6 +15,8 @@
     let { data } = $props();
 
     const thoughts = $state(data.thoughts);
+
+    let hasMoreAbove = $state(data.hasMoreAbove);
     
     let newThought = $state<string>('');
     let fileInput = $state<HTMLInputElement>();
@@ -25,6 +27,7 @@
     let aiMode = $state<boolean>(false);
     let searchQuery = $state<string>('');
 
+    // ai responses
     let aiSummary = $state<string>('');
     let retrievedThoughts = $state<Array<{id: number, content: string, timestamp: string, pinned: boolean}>>([]);
 
@@ -215,7 +218,6 @@
             <PinnedThoughts
                 pinnedThoughts={data.pinnedThoughts}
                 thoughtSet={data.thoughtSet}
-                contentScrollAreaRef={contentScrollAreaRef}
             />
         {/if}
     </div>
@@ -226,6 +228,7 @@
         aiSummary={aiSummary}
         retrievedThoughts={retrievedThoughts}
         thoughts={thoughts}
+        hasMoreAbove={hasMoreAbove}
         isLoading={isLoading}
         bind:scrollAreaRef={contentScrollAreaRef}
     />

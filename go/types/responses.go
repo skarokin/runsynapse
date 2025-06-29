@@ -16,13 +16,11 @@ type LoadFunctionResponse struct {
 	Thoughts    []Thought `json:"thoughts,omitempty"`
 	PinnedThoughts []Thought `json:"pinned_thoughts,omitempty"`
 	HasMoreAbove bool      `json:"more_above"`
-	HasMoreBelow bool      `json:"more_below"`
 }
 
 type LoadThoughtsResponse struct {
 	Thoughts    []Thought `json:"thoughts,omitempty"`
 	HasMoreAbove bool      `json:"more_above"`
-	HasMoreBelow bool      `json:"more_below"`
 }
 
 // for optimistic UI, returns the new thought w/ its attachments (we do this because thoughtID and attachment url generated in backend)

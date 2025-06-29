@@ -5,28 +5,6 @@ import (
 	"fmt"
 )
 
-// order validations
-type Order string
-
-const (
-    OrderBefore Order = "before"
-    OrderAfter  Order = "after"
-)
-
-func (o *Order) UnmarshalJSON(data []byte) error {
-    var s string
-    if err := json.Unmarshal(data, &s); err != nil {
-        return err
-    }
-    switch s {
-    case string(OrderBefore), string(OrderAfter):
-        *o = Order(s)
-        return nil
-    default:
-        return fmt.Errorf("invalid order: must be 'before' or 'after'")
-    }
-}
-
 // userID validations
 type UserID string
 

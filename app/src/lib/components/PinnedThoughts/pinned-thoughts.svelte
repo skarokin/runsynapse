@@ -1,6 +1,7 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
     import * as Popover from "$lib/components/ui/popover";
+    import * as HoverCard from "$lib/components/ui/hover-card";
     import { ScrollArea } from "$lib/components/ui/scroll-area";
     import Pin from "@lucide/svelte/icons/pin";
     import X from "@lucide/svelte/icons/x";
@@ -9,22 +10,11 @@
 
     let {
         pinnedThoughts,
-        thoughtSet,
-        contentScrollAreaRef
+        thoughtSet
     }: {
         pinnedThoughts: any[],
         thoughtSet: Set<string> | undefined,
-        contentScrollAreaRef: HTMLElement | null
     } = $props();
-
-    function gotoPin(id: string) {
-        // if thoughtSet already contains this thought, scroll to it
-        if (thoughtSet?.has(id)) {
-
-        } else {
-
-        }
-    }
 
     function unpinThought(id: string) {
         pinnedThoughts = pinnedThoughts.filter(thought => thought.id !== id);
@@ -41,31 +31,42 @@
         </Button>
     </Popover.Trigger>
     <Popover.Content class="w-[300px]">
+        <h1 class="text-sm">Pinned Thoughts</h1>
         <ScrollArea class="h-[400px] w-full">
             <div class="p-2">
                 {#if pinnedThoughts.length > 0}
                     {#each pinnedThoughts as thought (thought.id)}
-                        <div class="flex items-start w-full gap-2 p-2">
+                        <div class="flex items-start justify-between w-full gap-2 p-2">
+                            <HoverCard.Root openDelay={100}>
+                                <HoverCard.Trigger>
+                                    <div class="w-full">
+                                        <p class="text-xs leading-tight truncate text-left break-words ellipsis">
+                                            {thought.thought}
+                                        </p>
+                                        <span class="text-[10px] text-muted-foreground mt-1 block">
+                                            {prettyPrintDate(thought.created_at)}
+                                        </span>
+                                    </div>
+                                </HoverCard.Trigger>
+                                <HoverCard.Content class="w-full" side="left">
+                                    <div class="p-2">
+                                        <p class="text-sm leading-relaxed whitespace-pre-wrap">
+                                            {thought.thought}
+                                        </p>
+                                        <span class="text-xs text-muted-foreground">
+                                            {prettyPrintDate(thought.created_at)}
+                                        </span>
+                                    </div>
+                                </HoverCard.Content>
+                            </HoverCard.Root>
                             <Button
                                 variant="ghost"
-                                class="flex-1 text-left p-2 min-w-0"
-                                onclick={() => gotoPin(thought.id)}
-                            >
-                                <div class="w-full">
-                                    <p class="text-xs leading-tight truncate text-left break-words ellipsis">
-                                        {thought.thought}
-                                    </p>
-                                    <span class="text-[10px] text-muted-foreground mt-1 block">
-                                        {prettyPrintDate(thought.created_at)}
-                                    </span>
-                                </div>
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                class="p-1 h-6 w-6 flex-shrink-0 mt-1"
+                                size="sm"
+                                class="h-6 w-6 p-0 text-red-500 hover:text-red-600"
                                 onclick={() => unpinThought(thought.id)}
+                                title="Unpin"
                             >
-                                <X />
+                                <X class="w-3 h-3" />
                             </Button>
                         </div>
                     {/each}
