@@ -95,7 +95,7 @@
                             viewport.scrollTop = viewport.scrollHeight;
                         }
                     }
-                }, 100);
+                }, 0);
             }
 
             newThought = '';
