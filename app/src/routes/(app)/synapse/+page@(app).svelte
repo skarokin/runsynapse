@@ -10,7 +10,10 @@
     import { toast } from "svelte-sonner";
 
     import { ContentArea } from '$lib/components/ContentArea';
+    import { FilePreview } from '$lib/components/FilePreview';
     import { PinnedThoughts } from '$lib/components/PinnedThoughts';
+
+    import { onMount, tick } from 'svelte';
 
     let { data } = $props();
 
@@ -39,65 +42,42 @@
         isLoading = true;
         
         try {
-            if (aiMode) {
-                // This now simulates the full RAG response from your Go backend
-                await new Promise(resolve => setTimeout(resolve, 2000));
+            const formData = new FormData();
                 
-                aiSummary = `Based on your thoughts, you've considered improving the login flow by pre-filling emails and using biometrics instead of passwords.`;
-                retrievedThoughts = [
-                    {
-                        id: 99,
-                        content: "Why do we even need passwords? Biometric everything should be the default by now. Face ID for literally everything.",
-                        timestamp: "2:58 PM",
-                        pinned: true
-                    },
-                    {
-                        id: 98,
-                        content: "Just had this random idea about how we could optimize the login flow. What if we pre-filled email based on browser history?",
-                        timestamp: "2:15 PM",
-                        pinned: false
-                    }
-                ];
+            formData.append('thought', newThought);
+            pendingFiles.forEach(file => {
+                formData.append('files', file);
+            });
 
-            } else {
-                const formData = new FormData();
-                
-                formData.append('thought', newThought);
-                pendingFiles.forEach(file => {
-                    formData.append('files', file);
-                });
+            const res = await fetch('/synapse/api/newThought', {
+                method: 'POST',
+                body: formData
+            });
 
-                const res = await fetch('/synapse/api/newThought', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!res.ok) {
-                    toast.error('Failed to create new thought');
-                    return;
-                }
-
-                const result = await res.json();
-                if (result.error) {
-                    toast.error('Failed to create thought', result.error);
-                    return;
-                }
-
-                thoughts.push(result.thought);
-
-                // scroll to the bottom of the content area
-                setTimeout(() => {
-                    console.log('scrollAreaRef:', contentScrollAreaRef);
-                    if (contentScrollAreaRef) {
-                        const viewport = contentScrollAreaRef.querySelector('[data-slot="scroll-area-viewport"]');
-                        console.log('Found viewport:', viewport);
-                        if (viewport) {
-                            viewport.scrollTop = viewport.scrollHeight;
-                        }
-                    }
-                }, 0);
+            if (!res.ok) {
+                toast.error('Failed to create new thought');
+                return;
             }
 
+            const result = await res.json();
+            if (result.error) {
+                toast.error('Failed to create thought', result.error);
+                return;
+            }
+
+            thoughts.push(result.thought);
+
+            // scroll to the bottom of the content area
+            setTimeout(() => {
+                if (contentScrollAreaRef) {
+                    const viewport = contentScrollAreaRef.querySelector('[data-slot="scroll-area-viewport"]');
+                    console.log('Found viewport:', viewport);
+                    if (viewport) {
+                        viewport.scrollTop = viewport.scrollHeight;
+                    }
+                }
+            }, 0);
+            
             newThought = '';
             pendingFiles = [];
         } catch (error) {
@@ -181,6 +161,17 @@
             sendThought();
         }
     }
+
+    // force scroll to bottom when thoughts are set
+    onMount(async() => {
+        await tick();
+        if (thoughts.length > 0 && contentScrollAreaRef) {
+            const viewport = contentScrollAreaRef.querySelector('[data-slot="scroll-area-viewport"]');
+            if (viewport) {
+                viewport.scrollTop = viewport.scrollHeight;
+            }
+        }
+    });
 </script>
 
 <svelte:window onkeydown={(e) => {
@@ -234,39 +225,43 @@
     />
 
     <!-- input -->
-    <div class="flex items-center gap-2 border rounded-lg p-2">
-        {#if !aiMode}
-            <!-- if not AI mode, allow file uploads -->
-            <Button 
-                variant="ghost" 
-                size="sm" 
-                class="h-8 w-8 p-0 shrink-0"
-                onclick={handleFileUpload}
-                disabled={isUploading}
-            >
-                <Paperclip class="w-4 h-4" />
-            </Button>
-        {/if}
-        <Textarea
-            bind:value={newThought}
-            placeholder={aiMode ? "Ask AI about your thoughts..." : "What's on your mind?"}
-            class="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[40px] resize-none shadow-none"
-            onkeydown={handleTextareaKeydown}
-            rows={1}
-            disabled={isLoading}
-        />
-        <Button 
-            size="sm" 
-            class="h-8"
-            onclick={sendThought}
-            disabled={!newThought.trim() || isLoading}
-        >
-            {#if isLoading}
-                <div class="animate-spin h-4 w-4 border-2 border-t-transparent border-white rounded-full"></div>
-            {:else}
-                <Send class="w-4 h-4" />
+    <div class="flex flex-col items-center gap-2 border rounded-lg p-2">
+        <FilePreview bind:pendingFiles={pendingFiles} />
+        
+        <div class="w-full flex flex-row items-center gap-2">
+            {#if !aiMode}
+                <!-- if not AI mode, allow file uploads -->
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    class="h-8 w-8 p-0 shrink-0"
+                    onclick={handleFileUpload}
+                    disabled={isUploading}
+                >
+                    <Paperclip class="w-4 h-4" />
+                </Button>
             {/if}
-        </Button>
+            <Textarea
+                bind:value={newThought}
+                placeholder={aiMode ? "Ask AI about your thoughts..." : "What's on your mind?"}
+                class="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[40px] resize-none shadow-none overflow-y-hidden flex-1"
+                onkeydown={handleTextareaKeydown}
+                rows={1}
+                disabled={isLoading}
+            />
+            <Button 
+                size="sm" 
+                class="h-8"
+                onclick={sendThought}
+                disabled={!newThought.trim() || isLoading}
+            >
+                {#if isLoading}
+                    <div class="animate-spin h-4 w-4 border-2 border-t-transparent border-white rounded-full"></div>
+                {:else}
+                    <Send class="w-4 h-4" />
+                {/if}
+            </Button>
+        </div>
     </div>
 
     <!-- hidden file input -->
