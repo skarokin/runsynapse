@@ -11,7 +11,7 @@ type LoadThoughtsRequest struct {
 	Cursor ThoughtID `json:"cursor"`
 }
 
-type ToggleOrGotoPinRequest struct {
+type TogglePinRequest struct {
 	UserID   UserID `json:"user_id"`
 	ThoughtID string `json:"thought_id"`
 }

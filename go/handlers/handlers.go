@@ -30,7 +30,6 @@ func (h *Handler) setupRoutes() {
 	h.mux.HandleFunc("/pinThought", h.pinThought)
 	h.mux.HandleFunc("/unpinThought", h.unpinThought)
 	h.mux.HandleFunc("/searchThoughts", h.searchThoughts)
-	h.mux.HandleFunc("/gotoPin", h.gotoPin)
 	h.mux.HandleFunc("/deleteThought", h.deleteThought)
 	h.mux.HandleFunc("/newThought", h.newThought)
 	h.mux.HandleFunc("/health", h.healthCheck)

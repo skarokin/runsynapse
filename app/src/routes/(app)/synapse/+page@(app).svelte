@@ -17,7 +17,7 @@
 
     let { data } = $props();
 
-    const thoughts = $state(data.thoughts);
+    const thoughts = $derived(data.thoughts);
 
     let hasMoreAbove = $state(data.hasMoreAbove);
     

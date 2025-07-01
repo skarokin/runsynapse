@@ -14,7 +14,7 @@ func (h *Handler) pinThought(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var request types.ToggleOrGotoPinRequest
+	var request types.TogglePinRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		log.Println("Error decoding request body:", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -34,7 +34,7 @@ func (h *Handler) unpinThought(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var request types.ToggleOrGotoPinRequest
+	var request types.TogglePinRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		log.Println("Error decoding request body:", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -46,26 +46,4 @@ func (h *Handler) unpinThought(w http.ResponseWriter, r *http.Request) {
 	// 1. parse request json
 	// 2. remove the pin from the pins table for this user in the database
 	// 3. return the updated list of pinned thoughts for immediate use in the UI
-}
-
-func (h *Handler) gotoPin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var request types.ToggleOrGotoPinRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		log.Println("Error decoding request body:", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	log.Println("[PINS] Goto pin for user:", request.UserID)
-
-	// 1. parse request json
-	// 2. extract the pinned thought ID
-	// 3. perform a 'load thoughts' operation using the pinned thought ID's timestamp as the cursor
-	// 4. return the thoughts loaded around the pinned thought
 }

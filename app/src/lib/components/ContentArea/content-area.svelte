@@ -2,14 +2,17 @@
     import { ScrollArea } from '$lib/components/ui/scroll-area';
     import { Badge } from '$lib/components/ui/badge';
     import { Button } from '$lib/components/ui/button';
-    import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
     import Brain from "@lucide/svelte/icons/brain";
-    import Trash from "@lucide/svelte/icons/trash";
     import Pin from "@lucide/svelte/icons/pin";
-    import MoreHorizontal from "@lucide/svelte/icons/more-horizontal";
+    import ChevronsUp from "@lucide/svelte/icons/chevrons-up";
+    import Loader2 from "@lucide/svelte/icons/loader-2";
     import { toast } from 'svelte-sonner';
 
+    import { goto } from '$app/navigation';
+
     import { prettyPrintDate } from '$lib/utils/date';
+
+    import { ThoughtOptions } from '$lib/components/ThoughtOptions';
 
     let {
         aiMode,
@@ -25,51 +28,11 @@
     let topSentinel = $state<HTMLElement | null>(null);    // tiny element for intersection observer to detect
     let observer: IntersectionObserver | null = null;
 
-    function togglePin(thoughtID: string) {
+    async function togglePin(thoughtID: string) {
         const thought = thoughts.find((t: any) => t.id === thoughtID);
         if (thought) {
             thought.pinned = !thought.pinned;
         }
-    }
-
-    async function loadMoreThoughts() {
-        if (isLoadingMore || aiMode) {
-            return;
-        }
-
-        isLoadingMore = true;
-
-        try {
-            const res = await fetch('/synapse/api/loadMoreThoughts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    lastThoughtID: thoughts.length > 0 ? thoughts[0].id : null,
-                }),
-            });
-
-            if (!res.ok) {
-                toast.error('Failed to load more thoughts');
-                return;
-            }
-
-            const result = await res.json();
-            if (result.error) {
-                toast.error('Failed to load more thoughts', result.error);
-                return;
-            }
-
-            thoughts = [...result.thoughts, ...thoughts];
-            hasMoreAbove = result.hasMoreAbove || false;
-        } catch (error) {
-            console.error('Error loading more thoughts:', error);
-            toast.error('An error occurred while loading more thoughts');
-        } finally {
-            isLoadingMore = false;
-        }
-
     }
 
     async function deleteThought(thoughtID: string) {
@@ -100,6 +63,52 @@
         }
 
         thoughts = thoughts.filter((t: any) => t.id !== thoughtID);
+    }
+
+    async function loadMoreThoughts(dir: 'newer' | 'older' = 'older') {
+        if (isLoadingMore || aiMode) {
+            return;
+        }
+
+        isLoadingMore = true;
+
+        try {
+            const res = await fetch('/synapse/api/loadMoreThoughts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    lastThoughtID: thoughts.length > 0 ? thoughts[0].id : null,
+                }),
+            });
+
+            if (!res.ok) {
+                toast.error('Failed to load more thoughts');
+                return;
+            }
+
+            const result = await res.json();
+            if (result.error) {
+                toast.error('Failed to load more thoughts', result.error);
+                return;
+            }
+
+            thoughts = [...result.thoughts, ...thoughts];
+            hasMoreAbove = result.hasMoreAbove || false;
+            // silently updates address bar so that if a user refreshes, they stay on the same thought even if pagination reset
+            goto(`?cursor=${thoughts[0].id}`, {
+                replaceState: true,
+                noScroll: true,
+                keepFocus: true,
+            });
+        } catch (error) {
+            console.error('Error loading more thoughts:', error);
+            toast.error('An error occurred while loading more thoughts');
+        } finally {
+            isLoadingMore = false;
+        }
+
     }
 
     $effect(() => {
@@ -198,11 +207,27 @@
         <!-- thoughts area -->
         <!-- tiny div for intersection observer to detect scroll -->
         <div bind:this={topSentinel} class="h-1"></div>
-        {#if isLoadingMore}
-            <div class="text-center py-2 text-muted-foreground text-xs">
-                Loading more thoughts...
+
+        {#if hasMoreAbove}
+            <div class="flex justify-center py-4">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    class="text-xs text-muted-foreground"
+                    onclick={() => loadMoreThoughts('older')}
+                    disabled={isLoadingMore}
+                >
+                    {#if isLoadingMore}
+                        <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                    {:else}
+                        <ChevronsUp class="mr-2 h-4 w-4" />
+                        Load older thoughts
+                    {/if}
+                </Button>
             </div>
         {/if}
+
         <div class="space-y-1">
             {#each thoughts as thought}
                 <div
@@ -221,30 +246,11 @@
                                     Pinned
                                 </Badge>
                             {/if}
-                            <DropdownMenu.Root>
-                                <DropdownMenu.Trigger>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        class="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                                    >
-                                        <MoreHorizontal class="w-3.5 h-3.5" />
-                                    </Button>
-                                </DropdownMenu.Trigger>
-                                <DropdownMenu.Content align="end">
-                                    <DropdownMenu.Item onclick={() => togglePin(thought.id)}>
-                                        <Pin class="w-3.5 h-3.5 mr-2" />
-                                        {thought.pinned ? 'Unpin' : 'Pin'}
-                                    </DropdownMenu.Item>
-                                    <DropdownMenu.Item 
-                                        onclick={() => deleteThought(thought.id)}
-                                        class="text-red-600 focus:text-red-600"
-                                    >
-                                        <Trash class="w-3.5 h-3.5 mr-2" />
-                                        Delete
-                                    </DropdownMenu.Item>
-                                </DropdownMenu.Content>
-                            </DropdownMenu.Root>
+                            <ThoughtOptions
+                                thought={thought}
+                                onTogglePin={togglePin}
+                                onDelete={deleteThought}
+                            />
                         </div>
                         <p class="text-sm leading-relaxed whitespace-pre-wrap">
                             {thought.thought}
