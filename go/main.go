@@ -32,7 +32,12 @@ func main() {
 		log.Fatalf("Failed to create Gemini client: %v", err)
 	}
 
-	handler := handlers.NewHandler(supabaseClient, geminiClient)
+	s3Client, err := inits.NewS3Client(secrets.S3Region)
+	if err != nil {
+		log.Fatalf("Failed to create S3 client: %v", err)
+	}
+
+	handler := handlers.NewHandler(supabaseClient, geminiClient, s3Client)
 
 	port := os.Getenv("PORT")
 	if port == "" {

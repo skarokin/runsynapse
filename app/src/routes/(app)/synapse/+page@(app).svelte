@@ -1,25 +1,22 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button/index.js";
-    import { Input } from "$lib/components/ui/input/index.js";
     import Send from "@lucide/svelte/icons/send";
     import Paperclip from "@lucide/svelte/icons/paperclip";
-    import Search from "@lucide/svelte/icons/search";
-    import Brain from "@lucide/svelte/icons/brain";
-    import ArrowLeft from "@lucide/svelte/icons/arrow-left";
     import { Textarea } from "$lib/components/ui/textarea/index.js";
     import { toast } from "svelte-sonner";
 
     import { ContentArea } from '$lib/components/ContentArea';
     import { FilePreview } from '$lib/components/FilePreview';
-    import { PinnedThoughts } from '$lib/components/PinnedThoughts';
+    import { SynapseHeader } from '$lib/components/SynapseHeader';
 
     import { onMount, tick } from 'svelte';
 
     let { data } = $props();
 
-    const thoughts = $derived(data.thoughts);
+    let thoughts = $state(data.thoughts);
 
     let hasMoreAbove = $state(data.hasMoreAbove);
+    let hasMoreBelow = $state(data.hasMoreBelow);
     
     let newThought = $state<string>('');
     let fileInput = $state<HTMLInputElement>();
@@ -35,6 +32,7 @@
     let retrievedThoughts = $state<Array<{id: number, content: string, timestamp: string, pinned: boolean}>>([]);
 
     let contentScrollAreaRef = $state<HTMLElement | null>(null);
+    let savedScrollPosition = $state<number>(0);
 
     async function sendThought() {
         if (!newThought.trim()) return;
@@ -88,7 +86,16 @@
     }
 
     async function handleSearch() {
-        if (!searchQuery.trim()) return;
+        // save current scroll position before switching to AI mode
+        if (!aiMode && contentScrollAreaRef) {
+            const viewport = contentScrollAreaRef.querySelector('[data-slot="scroll-area-viewport"]');
+            if (viewport) {
+                savedScrollPosition = viewport.scrollTop;
+            }
+        }
+        // searchQuery is the initial search; the textarea containing newThought is reused for search
+        const query = aiMode ? newThought : searchQuery;
+        if (!query.trim()) return;
 
         isLoading = true;
         aiMode = true; // switch to AI mode on search
@@ -97,7 +104,7 @@
             // this now simulates the full RAG response from your Go backend
             await new Promise(resolve => setTimeout(resolve, 2000));
             
-            aiSummary = `Based on your thoughts, here's what I found about "${searchQuery}"...`;
+            aiSummary = `Based on your thoughts, here's what I found about "${query}"...`;
             retrievedThoughts = [
                 {
                     id: 99,
@@ -112,6 +119,10 @@
                     pinned: false
                 }
             ];
+
+            if (aiMode) {
+                newThought = '';
+            }
         } catch (error) {
             console.error('Error:', error);
             toast.error('Failed to search thoughts. Please try again.');
@@ -139,11 +150,20 @@
         searchQuery = '';
         aiSummary = '';
         retrievedThoughts = [];
-        setTimeout(() => {
+        // tick instead of timeout to prevent flickering
+        tick().then(() => {
             const textarea = document.querySelector('textarea');
             if (textarea) {
                 (textarea as HTMLTextAreaElement).focus();
                 (textarea as HTMLTextAreaElement).select();
+            }
+
+            // restore scroll
+            if (contentScrollAreaRef && savedScrollPosition > 0) {
+                const viewport = contentScrollAreaRef.querySelector('[data-slot="scroll-area-viewport"]');
+                if (viewport) {
+                    viewport.scrollTop = savedScrollPosition;
+                }
             }
         });
     }
@@ -158,19 +178,24 @@
     function handleTextareaKeydown(event: KeyboardEvent) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            sendThought();
+            if (aiMode) {
+                handleSearch();
+            } else {
+                sendThought();
+            }
         }
     }
 
     // force scroll to bottom when thoughts are set
-    onMount(async() => {
-        await tick();
-        if (thoughts.length > 0 && contentScrollAreaRef) {
-            const viewport = contentScrollAreaRef.querySelector('[data-slot="scroll-area-viewport"]');
-            if (viewport) {
-                viewport.scrollTop = viewport.scrollHeight;
+    onMount(() => {
+        tick().then(() => {
+            if (thoughts.length > 0 && contentScrollAreaRef) {
+                const viewport = contentScrollAreaRef.querySelector('[data-slot="scroll-area-viewport"]');
+                if (viewport) {
+                    viewport.scrollTop = viewport.scrollHeight;
+                }
             }
-        }
+        });
     });
 </script>
 
@@ -182,49 +207,26 @@
 
 <div class="flex flex-col h-full gap-6 w-full">
    <!-- header -->
-    <div class="flex items-center justify-between">
-        {#if aiMode}
-            <!-- ai mode - show back button and AI mode title -->
-            <Button variant="ghost" size="sm" onclick={exitAIMode}>
-                <ArrowLeft class="w-4 h-4" />
-                (ESC)
-            </Button>
-            <div class="flex items-center gap-2">
-                <Brain class="w-5 h-5 text-primary" />
-                <span class="font-medium text-primary">AI Search</span>
-            </div>
-        {:else}
-            <!-- thoughts mode - THE SEARCH BAR IS THE ENTRY POINT TO AI MODE -->
-            <div class="flex-1 max-w-xs sm:max-w-md">
-                <div class="relative">
-                    <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                        bind:value={searchQuery}
-                        placeholder="Search your thoughts..."
-                        class="pl-10"
-                        onkeydown={handleSearchKeydown}
-                    />
-                </div>
-            </div>
-            <PinnedThoughts
-                pinnedThoughts={data.pinnedThoughts}
-                thoughtSet={data.thoughtSet}
-            />
-        {/if}
-    </div>
+    <SynapseHeader 
+        aiMode={aiMode} 
+        exitAIMode={exitAIMode} 
+        bind:searchQuery={searchQuery} 
+        handleSearchKeydown={handleSearchKeydown} 
+        data={data}
+    />
 
     <!-- content area -->
     <ContentArea
         aiMode={aiMode}
         aiSummary={aiSummary}
         retrievedThoughts={retrievedThoughts}
-        thoughts={thoughts}
         hasMoreAbove={hasMoreAbove}
         isLoading={isLoading}
+        bind:thoughts={thoughts}
         bind:scrollAreaRef={contentScrollAreaRef}
     />
 
-    <!-- input -->
+    <!-- input; not in a separate component bc of stupid state management -->
     <div class="flex flex-col items-center gap-2 border rounded-lg p-2">
         <FilePreview bind:pendingFiles={pendingFiles} />
         
@@ -252,7 +254,7 @@
             <Button 
                 size="sm" 
                 class="h-8"
-                onclick={sendThought}
+                onclick={aiMode ? handleSearch : sendThought}
                 disabled={!newThought.trim() || isLoading}
             >
                 {#if isLoading}

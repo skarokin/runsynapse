@@ -1,0 +1,1 @@
+export { default as SynapseHeader } from './synapse-header.svelte';

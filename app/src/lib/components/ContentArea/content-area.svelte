@@ -9,6 +9,7 @@
     import { toast } from 'svelte-sonner';
 
     import { goto } from '$app/navigation';
+    import { SvelteSet } from 'svelte/reactivity';
 
     import { prettyPrintDate } from '$lib/utils/date';
 
@@ -19,14 +20,19 @@
         aiSummary,
         retrievedThoughts,
         isLoading,
-        thoughts,
+        // seems useless to make thoughts bindable here but, without bind, ContentArea only receives a snapshot of thoughts array at render time
+        // so when doing thoughts.push() in the parent, array reference changes but ContentArea is still working w/ old array reference
+        thoughts = $bindable([]),
         scrollAreaRef = $bindable(),
         hasMoreAbove = $bindable(false),
+        hasMoreBelow = $bindable(false),
     } = $props();
 
     let isLoadingMore = $state(false);  // universal for above or below loading
     let topSentinel = $state<HTMLElement | null>(null);    // tiny element for intersection observer to detect
     let observer: IntersectionObserver | null = null;
+
+    let pendingThoughtOperations = new SvelteSet();
 
     async function togglePin(thoughtID: string) {
         const thought = thoughts.find((t: any) => t.id === thoughtID);
@@ -41,28 +47,39 @@
             return;
         }
 
-        const res = await fetch('/synapse/api/deleteThought', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                thought_id: thoughtID,
-            }),
-        });
+        pendingThoughtOperations.add(thoughtID);
 
-        if (!res.ok) {
+        console.log('pendingThoughtOperations', pendingThoughtOperations);
+
+        try {
+            const res = await fetch('/synapse/api/deleteThought', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    thought_id: thoughtID,
+                }),
+            });
+
+            if (!res.ok) {
+                toast.error('Failed to delete thought');
+                return;
+            }
+
+            const result = await res.json();
+            if (result.error) {
+                toast.error('Failed to delete thought', result.error);
+                return;
+            }
+
+            thoughts = thoughts.filter((t: any) => t.id !== thoughtID);
+        } catch (error) {
+            console.error('Error:', error);
             toast.error('Failed to delete thought');
-            return;
+        } finally {
+            pendingThoughtOperations.delete(thoughtID);
         }
-
-        const result = await res.json();
-        if (result.error) {
-            toast.error('Failed to delete thought', result.error);
-            return;
-        }
-
-        thoughts = thoughts.filter((t: any) => t.id !== thoughtID);
     }
 
     async function loadMoreThoughts(dir: 'newer' | 'older' = 'older') {
@@ -229,9 +246,11 @@
         {/if}
 
         <div class="space-y-1">
-            {#each thoughts as thought}
+            {#each thoughts as thought (thought.id)}
                 <div
                     class="group flex items-center gap-2 hover:bg-muted/30 px-2 py-1 rounded transition-colors"
+                    class:opacity-50={pendingThoughtOperations.has(thought.id)}
+                    class:pointer-events-none={pendingThoughtOperations.has(thought.id)}
                 >
                     <div class="flex-1 min-w-0">
                         <div class="flex items-baseline gap-2">

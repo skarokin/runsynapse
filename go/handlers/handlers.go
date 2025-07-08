@@ -5,18 +5,22 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
     "google.golang.org/genai"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type Handler struct {
 	supabaseClient *pgxpool.Pool
 	geminiClient   *genai.Client
+	s3Client 	   *s3.Client
 	mux            *http.ServeMux
 }
 
-func NewHandler(supabase *pgxpool.Pool, gemini *genai.Client) *Handler {
+// upon registering a new handler, setup routes
+func NewHandler(supabase *pgxpool.Pool, gemini *genai.Client, s3 *s3.Client) *Handler {
 	h := &Handler{
 		supabaseClient: supabase,
 		geminiClient:   gemini,
+		s3Client: 	 	s3,
 		mux:            http.NewServeMux(),
 	}
 	h.setupRoutes()

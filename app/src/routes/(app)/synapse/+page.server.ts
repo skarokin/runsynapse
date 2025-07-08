@@ -43,6 +43,7 @@ export const load: PageServerLoad = async ({ locals: { user } }) => {
     return {
         thoughts: data.thoughts,
         hasMoreAbove: data.more_above || false,
+        hasMoreBelow: data.more_below || false,
         thoughtSet: new Set<string>(data.thoughts.map((thought: Thought) => thought.id)),
         pinnedThoughts: data.pinned_thoughts || [],
     }

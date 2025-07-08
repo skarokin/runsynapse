@@ -11,7 +11,7 @@ import (
 type Secrets struct {
 	DatabaseURL      string
 	GeminiAPIKey   	 string
-	// S3Client
+	S3Region		 string
 }
 
 func InitSecrets() (*Secrets, error) {
@@ -25,18 +25,19 @@ func InitSecrets() (*Secrets, error) {
 		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
 	}
 
-	webhookSecret := os.Getenv("WEBHOOK_SECRET")
-	if webhookSecret == "" {
-		return nil, fmt.Errorf("WEBHOOK_SECRET environment variable is required")
-	}
-
 	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
 	if geminiAPIKey == "" {
 		return nil, fmt.Errorf("GEMINI_API_KEY environment variable is required")
 	}
 
+	s3Region := os.Getenv("S3_REGION")
+	if s3Region == "" {
+		return nil, fmt.Errorf("S3_REGION environment variable is required")
+	}
+
 	return &Secrets{
 		DatabaseURL: databaseURL,
 		GeminiAPIKey: geminiAPIKey,
+		S3Region: s3Region,
 	}, nil
 }
