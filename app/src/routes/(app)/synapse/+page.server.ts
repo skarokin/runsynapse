@@ -39,6 +39,8 @@ export const load: PageServerLoad = async ({ locals: { user } }) => {
         console.error('Invalid response format:', data);
         return { error: 'Invalid response format' };
     }
+
+    console.log(data.thoughts)
     
     return {
         thoughts: data.thoughts,

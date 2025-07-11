@@ -12,6 +12,16 @@ import (
 	"github.com/skarokin/runsynapse/go/utils"
 )
 
+type FileResult struct {
+	URLs []string
+	Err error
+}
+
+type EmbeddingResult struct {
+	Embedding string
+	Err error
+}
+
 func (h *Handler) newThought(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -49,53 +59,62 @@ func (h *Handler) newThought(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-	// handle file uploads, if any
-    var attachmentURLs []string
-    files := r.MultipartForm.File["files"]
+	// make channels for files and embedding async calls
+	fileChan := make(chan FileResult, 1)
+	embeddingChan := make(chan EmbeddingResult, 1)
     
-    if len(files) > 0 {
-        log.Printf("Processing %d file(s)", len(files))
+	// process attachments
+    go func() {
+        defer close(fileChan)
         
-        for _, fileHeader := range files {
-            file, err := fileHeader.Open()
-            if err != nil {
-                log.Printf("Error opening file %s: %v", fileHeader.Filename, err)
-                continue
-            }
-            defer file.Close()
-
-            // TODO: Upload to S3
-            // but for now, just log the file info
-            log.Printf("File: %s, Size: %d bytes, Type: %s", 
-                fileHeader.Filename, fileHeader.Size, fileHeader.Header.Get("Content-Type"))
-            
-            // placeholder URL - replace with actual S3 upload
-            attachmentURL := "https://placeholder-s3-url.com/" + fileHeader.Filename
-            attachmentURLs = append(attachmentURLs, attachmentURL)
-        }
-    }
-
-	// postgres expects attachment URLs as a JSON array, so marshal it
-	var attachmentURLsBytes []byte
-	if len(attachmentURLs) == 0 {
-		attachmentURLsBytes = []byte("[]")
-	} else {
-		attachmentURLsBytes, err = json.Marshal(attachmentURLs)
-		if err != nil {
-			log.Printf("Error marshalling attachment URLs: %v", err)
-			http.Error(w, "Failed to process attachments", http.StatusInternalServerError)
-			return
-		}
-	}
+        urls, err := utils.UploadFilesToS3(
+            context.Background(),
+            h.s3Client,
+            h.s3Bucket,
+            r.MultipartForm.File["files"],
+        )
+        fileChan <- FileResult{URLs: urls, Err: err}
+    }()
 
 	// generate embeddings
-	// FUTURE - this should be background; consistently takes 800-1000ms
-	embedding, err := utils.GetThoughtEmbedding(context.Background(), h.geminiClient, thoughtText)
-	if err != nil {
-		log.Printf("Error generating embedding: %v", err)
+    go func() {
+        defer close(embeddingChan)
+        
+        embedding, err := utils.GetThoughtEmbedding(context.Background(), h.geminiClient, thoughtText)
+        embeddingChan <- EmbeddingResult{Embedding: embedding, Err: err}
+    }()
+
+	// wait for both goroutines to finish
+	fileResult := <-fileChan
+	embeddingResult := <-embeddingChan
+
+	if fileResult.Err != nil {
+		log.Printf("Error uploading files: %v", fileResult.Err)
+		http.Error(w, "Failed to upload files", http.StatusInternalServerError)
+		return
+	}
+
+	if embeddingResult.Err != nil {
+		log.Printf("Error generating embedding: %v", embeddingResult.Err)
 		http.Error(w, "Failed to generate embedding", http.StatusInternalServerError)
 		return
 	}
+
+	attachmentURLs := fileResult.URLs
+	embedding := embeddingResult.Embedding
+
+	// postgres expects attachment URLs as a JSON array so marshal it
+	var attachmentURLsBytes []byte
+    if len(attachmentURLs) == 0 {
+        attachmentURLsBytes = []byte("[]")
+    } else {
+        attachmentURLsBytes, err = json.Marshal(attachmentURLs)
+        if err != nil {
+            log.Printf("Error marshalling attachment URLs: %v", err)
+            http.Error(w, "Failed to process attachments", http.StatusInternalServerError)
+            return
+        }
+    }
 
 	// get db result
 	var res string
@@ -221,9 +240,22 @@ func (h *Handler) deleteThought(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// 3. TODO - delete the files from S3 if they exist (database call will return attachment URLs)
+	// 3. delete the files from S3 if they exist (database call will return attachment URLs)
+	for _, url := range dbResult.AttachmentURLs {
+		if url == "" {
+			continue // skip empty URLs
+		}
+		err = utils.DeleteFromS3(
+			context.Background(),
+			h.s3Client,
+			h.s3Bucket,
+			url,
+		)
+		if err != nil {
+			log.Printf("Error deleting file from S3: %v", err)
+		}
+	}
 
-	// for now, just log attachment URLs and return success
 	response := types.DeleteThoughtResponse{
 		Success: dbResult.Deleted,
 	}
@@ -235,4 +267,3 @@ func (h *Handler) deleteThought(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-

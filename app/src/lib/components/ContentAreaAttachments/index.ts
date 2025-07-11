@@ -1,0 +1,1 @@
+export { default as ContentAreaAttachments } from './content-area-attachments.svelte';

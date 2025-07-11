@@ -12,6 +12,7 @@ type Secrets struct {
 	DatabaseURL      string
 	GeminiAPIKey   	 string
 	S3Region		 string
+	S3Bucket		 string
 }
 
 func InitSecrets() (*Secrets, error) {
@@ -35,9 +36,15 @@ func InitSecrets() (*Secrets, error) {
 		return nil, fmt.Errorf("S3_REGION environment variable is required")
 	}
 
+	s3Bucket := os.Getenv("S3_BUCKET")
+	if s3Bucket == "" {
+		return nil, fmt.Errorf("S3_BUCKET environment variable is required")
+	}
+
 	return &Secrets{
 		DatabaseURL: databaseURL,
 		GeminiAPIKey: geminiAPIKey,
 		S3Region: s3Region,
+		S3Bucket: s3Bucket,
 	}, nil
 }

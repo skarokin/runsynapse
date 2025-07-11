@@ -70,17 +70,7 @@ func (h *Handler) loadFunction(w http.ResponseWriter, r *http.Request) {
             log.Printf("Error unmarshaling thought: %v", err)
             continue
         }
-
-		// for each thought, generate presigned URLs for attachments
-		for i, key := range thought.Attachments {
-			// url, err := h.S3Client.GeneratePresignedURL(key, 5*time.Minute)
-			// if err != nil {
-			// 	log.Printf("Error generating presigned URL for attachment %d: %v", i, err)
-			// 	continue
-			// }
-			thought.Attachments[i] = "hi test" + key
-			log.Printf("Generated presigned URL for attachment %d: %s", i, thought.Attachments[i])
-		}
+		
         thoughts = append(thoughts, thought)
     }
 
@@ -169,6 +159,7 @@ func (h *Handler) loadThoughts(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		thoughts = append(thoughts, thought)
+
 	}
 
 	// build response

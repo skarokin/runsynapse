@@ -12,15 +12,17 @@ type Handler struct {
 	supabaseClient *pgxpool.Pool
 	geminiClient   *genai.Client
 	s3Client 	   *s3.Client
+	s3Bucket       string
 	mux            *http.ServeMux
 }
 
 // upon registering a new handler, setup routes
-func NewHandler(supabase *pgxpool.Pool, gemini *genai.Client, s3 *s3.Client) *Handler {
+func NewHandler(supabase *pgxpool.Pool, gemini *genai.Client, s3 *s3.Client, s3Bucket string) *Handler {
 	h := &Handler{
 		supabaseClient: supabase,
 		geminiClient:   gemini,
 		s3Client: 	 	s3,
+		s3Bucket:       s3Bucket,
 		mux:            http.NewServeMux(),
 	}
 	h.setupRoutes()

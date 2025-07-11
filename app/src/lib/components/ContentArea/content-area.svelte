@@ -14,6 +14,7 @@
     import { prettyPrintDate } from '$lib/utils/date';
 
     import { ThoughtOptions } from '$lib/components/ThoughtOptions';
+    import { ContentAreaAttachments } from '$lib/components/ContentAreaAttachments';
 
     let {
         aiMode,
@@ -128,6 +129,7 @@
 
     }
 
+    // Intersection Observer to load more thoughts when scrolled to top
     $effect(() => {
         if (topSentinel && scrollAreaRef && hasMoreAbove && !aiMode) {
             observer = new IntersectionObserver(
@@ -274,6 +276,11 @@
                         <p class="text-sm leading-relaxed whitespace-pre-wrap">
                             {thought.thought}
                         </p>
+
+                        <!-- attachments -->
+                        <ContentAreaAttachments
+                            attachments={thought.attachments}
+                        />
                     </div>
                 </div>
             {/each}

@@ -71,11 +71,11 @@ func getEmbedding(ctx context.Context, client *genai.Client, text string, taskTy
 func GetThoughtEmbedding(ctx context.Context, client *genai.Client, text string) (string, error) {
     log.Printf("[EMBEDDING] Generating embedding for thought: %s", text)
 
-	return getEmbedding(ctx, client, text, "DOCUMENT_RETRIEVAL")
+	return getEmbedding(ctx, client, text, "RETRIEVAL_DOCUMENT")
 }
 
 func GetQueryEmbedding(ctx context.Context, client *genai.Client, query string) (string, error) {
 	log.Printf("[EMBEDDING] Generating embedding for query: %s", query)
 
-	return getEmbedding(ctx, client, query, "QUERY_RETRIEVAL")
+	return getEmbedding(ctx, client, query, "RETRIEVAL_QUERY")
 }
